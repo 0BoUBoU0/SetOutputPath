@@ -7,7 +7,7 @@ bl_info = {
     "warning": "",
     "category": "Render",
     "blender": (2,90,0),
-    "version": (1,3,342)
+    "version": (1,3,4)
 }
 
 # get addon name and version to use them automaticaly in the addon
@@ -381,7 +381,7 @@ class RENDER_OT_setoutputpath(bpy.types.Operator):
                         snap_history_1st_line = bpy.data.texts['Snapshots_History'].lines[0].body
                         file_version = snap_history_1st_line.replace("--","").split(":")[-1].replace(" ","")
                     else:
-                        file_version = last_version_str
+                        file_version = f"v{last_version_str}"
                     del last_version_str  
                     elem = file_version 
                 
