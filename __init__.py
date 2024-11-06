@@ -7,7 +7,7 @@ bl_info = {
     "warning": "",
     "category": "Render",
     "blender": (2, 90, 0),
-    "version": (2, 0, 11)
+    "version": (2,0,21)
 }
 
 import os
@@ -87,42 +87,38 @@ class RENDER_PT_setoutputpathfieldsoptions(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         box = layout.box()
+        def ui_blocs(list):
+            iter = 0
+            for char, label,icon in list:
+                row.operator('sop.add_character_enum', text=label, icon=icon).character = char
+                iter += 1
         # main options
         row = box.row()
         char_options_A = [
-            ("[Output Folder]", "Output Folder"),
-            ("[Scene Name]", "Scene Name"),
-            ("[File Name]", "File Name"),
-            ("[Camera Name]", "Camera Name"),
-            ("[File Version]", "File Version")
+            ("[Output Folder]", "Output Folder","FILE_FOLDER"),
+            ("[Scene Name]", "Scene Name","SCENE_DATA"),
+            ("[File Name]", "File Name","FILE"),
+            ("[Camera Name]", "Camera Name","CAMERA_DATA"),
+            ("[File Version]", "File Version","LINENUMBERS_ON")
         ]
-        iter = 0
-        for char, label in char_options_A:
-            row.operator('sop.add_character_enum', text=label).character = char
-            iter += 1
+        ui_blocs(char_options_A)
         # separators
         row = box.row()
         char_options_B = [
-            ("\\", "\\"),
-            ("_", "_"),
-            ("-", "-"),
-            (".", "."),
+            ("\\", "Backlash \\","NONE"),
+            ("_", "Underscore _","NONE"),
+            ("-", "Dash -","NONE"),
+            (".", "Dot .","NONE"),
         ]
-        iter = 0
-        for char, label in char_options_B:
-            row.operator('sop.add_character_enum', text=label).character = char
-            iter += 1
+        ui_blocs(char_options_B)
         # customs
         row = box.row()
         char_options_C = [
-            ("[Custom A]", "Custom A"),
-            ("[Custom B]", "Custom B"),
-            ("[Custom C]", "Custom C"),
+            ("[Custom A]", "Custom A","NONE"),
+            ("[Custom B]", "Custom B","NONE"),
+            ("[Custom C]", "Custom C","NONE"),
         ]
-        iter = 0
-        for char, label in char_options_C:
-            row.operator('sop.add_character_enum', text=label).character = char
-            iter += 1
+        ui_blocs(char_options_C)
         
         box = layout.box()
         row = box.row()
