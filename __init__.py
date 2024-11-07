@@ -7,8 +7,14 @@ bl_info = {
     "warning": "",
     "category": "Render",
     "blender": (2, 90, 0),
-    "version": (2,0,21)
+    "version": (2,0,22)
 }
+
+
+# get addon name and version to use them automaticaly in the addon
+Addon_Name = str(bl_info["name"])
+Addon_Version = str(bl_info["version"])
+Addon_Version = Addon_Version[1:8].replace(",",".")
 
 import os
 import bpy
@@ -37,7 +43,7 @@ class RENDER_setoutputpathprop(bpy.types.PropertyGroup):
     output_customfield_c_prop: bpy.props.StringProperty(default="", name="", description='Third user custom field (C)')
 
     output_custom_filepath: bpy.props.StringProperty(default="//Output", name="Root Output Folder", description='Output folder filepath')
-    output_path_previs: bpy.props.StringProperty(default="[Output Folder]**\\", name="Path", description='')
+    output_path_previs: bpy.props.StringProperty(default="[Output Folder]**\\", name="Path previs", description='')
 
     filepath_options = [("Absolute", "Absolute", "Absolute"), ("Relative", "Relative", "Relative")]
     filepath_selection: bpy.props.EnumProperty(
@@ -49,7 +55,7 @@ class RENDER_setoutputpathprop(bpy.types.PropertyGroup):
 
 # Create panel for output path
 class RENDER_PT_setoutputpath(bpy.types.Panel):
-    bl_label = "Set Output Path"
+    bl_label = f"Set Output Path - {Addon_Version}"
     bl_idname = "RENDER_PT_setoutputpath"
     bl_region_type = "WINDOW"
     bl_space_type = "PROPERTIES"
