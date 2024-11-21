@@ -7,7 +7,7 @@ bl_info = {
     "warning": "",
     "category": "Render",
     "blender": (2, 90, 0),
-    "version": (2,0,22)
+    "version": (2,0,31)
 }
 
 
@@ -44,6 +44,7 @@ class RENDER_setoutputpathprop(bpy.types.PropertyGroup):
 
     output_custom_filepath: bpy.props.StringProperty(default="//Output", name="Root Output Folder", description='Output folder filepath')
     output_path_previs: bpy.props.StringProperty(default="[Output Folder]**\\", name="Path previs", description='')
+    output_corresponding_prop : bpy.props.StringProperty(name="Translation",default="",description='translate field a to field b, separated by ",". I.E. "Image=rgba,Alpha=alpha"')
 
     filepath_options = [("Absolute", "Absolute", "Absolute"), ("Relative", "Relative", "Relative")]
     filepath_selection: bpy.props.EnumProperty(
@@ -142,6 +143,8 @@ class RENDER_PT_setoutputpathfieldsoptions(bpy.types.Panel):
         split = col.split(factor=2/5)
         split.label(text="C Custom")
         split.prop(context.scene.setoutputpath_props, "output_customfield_c_prop")
+        row = box.row()
+        row.prop(VLToolbox_props, "output_corresponding_prop")
 
 # Operator for deleting the last character
 class SOP_OT_dellastcharacter(bpy.types.Operator):
@@ -191,10 +194,9 @@ class RENDER_OT_setoutputpath(bpy.types.Operator):
                 scene.setoutputpath_props.output_customfield_a_prop = scene_ref.setoutputpath_props.output_customfield_a_prop
                 scene.setoutputpath_props.output_customfield_b_prop = scene_ref.setoutputpath_props.output_customfield_b_prop
                 scene.setoutputpath_props.scenes_selection = scene_ref.setoutputpath_props.scenes_selection
-
             output_path = scene.setoutputpath_props.output_path_previs
             output_split = output_path.split("**")
-            clean_filepath = ""
+            complete_filepath = ""
             for elem in output_split:
                 if elem == "[Output Folder]":
                     if scene.setoutputpath_props.filepath_selection == "Relative":
@@ -224,9 +226,24 @@ class RENDER_OT_setoutputpath(bpy.types.Operator):
                         file_version = "v001"
                     elem = file_version
                 
-                clean_filepath += elem
-
-            scene.render.filepath = clean_filepath.replace("\\\\", "\\").replace("\\//", "\\").replace("////", "//")
+                complete_filepath += elem
+            # clean the filepath
+            clean_filepath = complete_filepath.replace("\\\\", "\\").replace("\\//", "\\").replace("////", "//")
+            # translate filepath regarding what user needs
+            if scene.setoutputpath_props.output_corresponding_prop != "":
+                corresponding_list = output_corresponding_prop.split(',')
+                corresponding_dict = {}
+                for corres in corresponding_list:
+                    corres = corres.replace(" ","")
+                    corres_split = corres.split("=")
+                    corresponding_dict[corres_split[0]] = corres_split[-1]
+                # check if user wants to change the string
+                for string in corresponding_dict.keys():
+                    if string in clean_filepath :
+                        corrected_filepath = clean_filepath.replace(string,corresponding_dict.get(string))
+            
+            # change filepath
+            scene.render.filepath = corrected_filepath
 
         print(f"\n {separator} Set Output Path Finished {separator} \n")
         return {"FINISHED"}
