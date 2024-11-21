@@ -7,14 +7,14 @@ bl_info = {
     "warning": "",
     "category": "Render",
     "blender": (2, 90, 0),
-    "version": (2,0,31)
+    "version": (2,0,33)
 }
 
 
 # get addon name and version to use them automaticaly in the addon
 Addon_Name = str(bl_info["name"])
 Addon_Version = str(bl_info["version"])
-Addon_Version = Addon_Version[1:8].replace(",",".")
+Addon_Version = Addon_Version[1:-1].replace(",",".")
 
 import os
 import bpy
@@ -42,9 +42,9 @@ class RENDER_setoutputpathprop(bpy.types.PropertyGroup):
     output_customfield_b_prop: bpy.props.StringProperty(default="", name="", description='Second user custom field (B)')
     output_customfield_c_prop: bpy.props.StringProperty(default="", name="", description='Third user custom field (C)')
 
-    output_custom_filepath: bpy.props.StringProperty(default="//Output", name="Root Output Folder", description='Output folder filepath')
+    output_custom_filepath: bpy.props.StringProperty(default="//Output", name="Output Folder", description='Output folder filepath, the root where everything starts')
     output_path_previs: bpy.props.StringProperty(default="[Output Folder]**\\", name="Path previs", description='')
-    output_corresponding_prop : bpy.props.StringProperty(name="Translation",default="",description='translate field a to field b, separated by ",". I.E. "Image=rgba,Alpha=alpha"')
+    output_corresponding_prop : bpy.props.StringProperty(name="Translation",default="",description='translate field a to field b, separated by ",". I.E. "Image=rgba,Alpha=alpha" makes Images_Alpha becomes rgba_alpha')
 
     filepath_options = [("Absolute", "Absolute", "Absolute"), ("Relative", "Relative", "Relative")]
     filepath_selection: bpy.props.EnumProperty(
@@ -79,7 +79,7 @@ class RENDER_PT_setoutputpath(bpy.types.Panel):
         box = layout.box()
         row = box.row()
         split = row.split(align=True, factor=0.9)
-        split.label(text=f"Path: {output_pathprevis}")
+        split.label(icon="FOLDER_REDIRECT",text=f"Path: {output_pathprevis}")
         split.operator('sop.dellastcharacter', text="", icon="TRIA_LEFT_BAR")
 
 # Create panel for field options
@@ -91,16 +91,30 @@ class RENDER_PT_setoutputpathfieldsoptions(bpy.types.Panel):
     bl_context = 'output'
     bl_parent_id = "RENDER_PT_setoutputpath"
 
+    def draw_header(self, context):
+        layout = self.layout
+        layout.label(text="", icon='SMALL_CAPS')
+
     def draw(self, context):
+        setoutputpath_props = context.scene.setoutputpath_props
+
         layout = self.layout
         box = layout.box()
+        row = box.row()
+        # add icon
+        col1 = row.column()
+        col1.alignment = 'CENTER'
+        col1.separator(factor=3)
+        col1.label(icon='TEXT')
+
+        # main options
+        col2 = row.column()
         def ui_blocs(list):
             iter = 0
             for char, label,icon in list:
-                row.operator('sop.add_character_enum', text=label, icon=icon).character = char
+                sub_row.operator('sop.add_character_enum', text=label, icon=icon).character = char
                 iter += 1
-        # main options
-        row = box.row()
+        # create buttons
         char_options_A = [
             ("[Output Folder]", "Output Folder","FILE_FOLDER"),
             ("[Scene Name]", "Scene Name","SCENE_DATA"),
@@ -108,43 +122,52 @@ class RENDER_PT_setoutputpathfieldsoptions(bpy.types.Panel):
             ("[Camera Name]", "Camera Name","CAMERA_DATA"),
             ("[File Version]", "File Version","LINENUMBERS_ON")
         ]
+        sub_row = col2.row()
         ui_blocs(char_options_A)
         # separators
-        row = box.row()
         char_options_B = [
             ("\\", "Backlash \\","NONE"),
             ("_", "Underscore _","NONE"),
             ("-", "Dash -","NONE"),
             (".", "Dot .","NONE"),
         ]
+        sub_row = col2.row()
         ui_blocs(char_options_B)
         # customs
-        row = box.row()
         char_options_C = [
             ("[Custom A]", "Custom A","NONE"),
             ("[Custom B]", "Custom B","NONE"),
             ("[Custom C]", "Custom C","NONE"),
         ]
+        sub_row = col2.row()
         ui_blocs(char_options_C)
         
         box = layout.box()
         row = box.row()
-        row.prop(context.scene.setoutputpath_props, "output_custom_filepath")
-        row = box.row()
+        # # add icon
+        # col1 = row.column()
+        # col1.alignment = 'CENTER'
+        # col1.separator(factor=3)
+        # col1.label(icon='PREFERENCES')
+
+        col2 = row.column()
+        col2.prop(setoutputpath_props, "output_custom_filepath")
+        row = col2.row()
+        row.prop(setoutputpath_props, "output_corresponding_prop")
+        row = col2.row()
         col = row.column()
         split = col.split(factor=2/5)
         split.label(text="A Custom")
-        split.prop(context.scene.setoutputpath_props, "output_customfield_a_prop")
+        split.prop(setoutputpath_props, "output_customfield_a_prop")
         col = row.column()
         split = col.split(factor=2/5)
         split.label(text="B Custom")
-        split.prop(context.scene.setoutputpath_props, "output_customfield_b_prop")
+        split.prop(setoutputpath_props, "output_customfield_b_prop")
         col = row.column()
         split = col.split(factor=2/5)
         split.label(text="C Custom")
-        split.prop(context.scene.setoutputpath_props, "output_customfield_c_prop")
-        row = box.row()
-        row.prop(VLToolbox_props, "output_corresponding_prop")
+        split.prop(setoutputpath_props, "output_customfield_c_prop")
+
 
 # Operator for deleting the last character
 class SOP_OT_dellastcharacter(bpy.types.Operator):
@@ -229,21 +252,23 @@ class RENDER_OT_setoutputpath(bpy.types.Operator):
                 complete_filepath += elem
             # clean the filepath
             clean_filepath = complete_filepath.replace("\\\\", "\\").replace("\\//", "\\").replace("////", "//")
+            print(f"{clean_filepath=}")
             # translate filepath regarding what user needs
             if scene.setoutputpath_props.output_corresponding_prop != "":
-                corresponding_list = output_corresponding_prop.split(',')
+                corresponding_list = scene.setoutputpath_props.output_corresponding_prop.split(',')
                 corresponding_dict = {}
                 for corres in corresponding_list:
                     corres = corres.replace(" ","")
                     corres_split = corres.split("=")
                     corresponding_dict[corres_split[0]] = corres_split[-1]
+                print(f"{corresponding_dict=}")
                 # check if user wants to change the string
                 for string in corresponding_dict.keys():
                     if string in clean_filepath :
-                        corrected_filepath = clean_filepath.replace(string,corresponding_dict.get(string))
+                        clean_filepath = clean_filepath.replace(string,corresponding_dict.get(string))
             
             # change filepath
-            scene.render.filepath = corrected_filepath
+            scene.render.filepath = clean_filepath
 
         print(f"\n {separator} Set Output Path Finished {separator} \n")
         return {"FINISHED"}
