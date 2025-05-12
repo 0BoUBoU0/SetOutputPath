@@ -7,9 +7,27 @@ bl_info = {
     "warning": "",
     "category": "Render",
     "blender": (2, 90, 0),
-    "version": (2,0,33)
+    "version": (2,0,43)
 }
 
+
+'''
+
+ajouter un custom field from script : 
+
+        # use a user script if wanted
+        if bpy.context.scene.campanprops.playblast_postscript_prop != None: 
+            # update last version of the script
+            post_script = bpy.context.scene.campanprops.playblast_postscript_prop
+            post_script_name = post_script.name
+            post_script_filepath = post_script.filepath
+
+            bpy.data.texts.remove(post_script)
+            bpy.ops.text.open(filepath=post_script_filepath)
+            bpy.context.scene.campanprops.playblast_postscript_prop = bpy.data.texts[post_script_name]
+            if bpy.context.scene.campanprops.playblast_postscript_checkbox_prop:
+                exec(bpy.context.scene.campanprops.playblast_postscript_prop.as_string())
+'''
 
 # get addon name and version to use them automaticaly in the addon
 Addon_Name = str(bl_info["name"])
@@ -23,6 +41,15 @@ import bpy
 debug_mode = False
 separator = "-" * 20
 snap_folder = "Snap_Files"
+
+## define addon preferences
+class SOP_preferences(bpy.types.AddonPreferences):
+    bl_idname = __name__
+
+    postscript_pref : bpy.props.BoolProperty(name="Add post-script", default=False, description = "")
+    def draw(self, context):
+        layout = self.layout
+        layout.prop(self, "postscript_pref")
 
 # Create property group
 class RENDER_setoutputpathprop(bpy.types.PropertyGroup):
@@ -41,6 +68,9 @@ class RENDER_setoutputpathprop(bpy.types.PropertyGroup):
     output_customfield_a_prop: bpy.props.StringProperty(default="", name="", description='First user custom field (A)')
     output_customfield_b_prop: bpy.props.StringProperty(default="", name="", description='Second user custom field (B)')
     output_customfield_c_prop: bpy.props.StringProperty(default="", name="", description='Third user custom field (C)')
+
+    output_postscript_prop : bpy.props.PointerProperty (type=bpy.types.Text, name="", description="Third user custom field (From Script)")
+    output_postscript_checkbox_prop : bpy.props.BoolProperty (name="", default=True, description='if on, will launch a script after changing the render path')
 
     output_custom_filepath: bpy.props.StringProperty(default="//Output", name="Output Folder", description='Output folder filepath, the root where everything starts')
     output_path_previs: bpy.props.StringProperty(default="[Output Folder]**\\", name="Path previs", description='')
@@ -75,6 +105,8 @@ class RENDER_PT_setoutputpath(bpy.types.Panel):
         split = row.split(align=True, factor=0.85)
         split.operator('render.setoutputpath', text="Set Output Path", icon="FILE_FOLDER")
         split.prop(setoutputpath_props, "filepath_selection")
+        if bpy.context.preferences.addons[__name__].preferences.postscript_pref:
+            split.prop(setoutputpath_props, "output_postscript_checkbox_prop", icon='SYSTEM')
         
         box = layout.box()
         row = box.row()
@@ -138,6 +170,7 @@ class RENDER_PT_setoutputpathfieldsoptions(bpy.types.Panel):
             ("[Custom A]", "Custom A","NONE"),
             ("[Custom B]", "Custom B","NONE"),
             ("[Custom C]", "Custom C","NONE"),
+            #("[Custom From Script]", "Custom From Script","NONE"),
         ]
         sub_row = col2.row()
         ui_blocs(char_options_C)
@@ -153,8 +186,6 @@ class RENDER_PT_setoutputpathfieldsoptions(bpy.types.Panel):
         col2 = row.column()
         col2.prop(setoutputpath_props, "output_custom_filepath")
         row = col2.row()
-        row.prop(setoutputpath_props, "output_corresponding_prop")
-        row = col2.row()
         col = row.column()
         split = col.split(factor=2/5)
         split.label(text="A Custom")
@@ -167,6 +198,12 @@ class RENDER_PT_setoutputpathfieldsoptions(bpy.types.Panel):
         split = col.split(factor=2/5)
         split.label(text="C Custom")
         split.prop(setoutputpath_props, "output_customfield_c_prop")
+        bbox = box.box()
+        row = bbox.row()
+        row.prop(setoutputpath_props, "output_corresponding_prop")
+        if bpy.context.preferences.addons[__name__].preferences.postscript_pref:
+            row = bbox.row()
+            row.prop(setoutputpath_props, "output_postscript_prop", text="Post-Script")
 
 
 # Operator for deleting the last character
@@ -248,7 +285,7 @@ class RENDER_OT_setoutputpath(bpy.types.Operator):
                     else:
                         file_version = "v001"
                     elem = file_version
-                
+
                 complete_filepath += elem
             # clean the filepath
             clean_filepath = complete_filepath.replace("\\\\", "\\").replace("\\//", "\\").replace("////", "//")
@@ -270,11 +307,18 @@ class RENDER_OT_setoutputpath(bpy.types.Operator):
             # change filepath
             scene.render.filepath = clean_filepath
 
+            # use a user script if wanted
+            if scene.setoutputpath_props.output_postscript_checkbox_prop:
+                if scene.setoutputpath_props.output_postscript_prop != None: 
+                    exec(scene.setoutputpath_props.output_postscript_prop.as_string())
+                    print(f"script {scene.setoutputpath_props.output_postscript_prop.name} launched")
+
         print(f"\n {separator} Set Output Path Finished {separator} \n")
         return {"FINISHED"}
 
 # Register classes
 classes = (
+    SOP_preferences,
     RENDER_setoutputpathprop,
     RENDER_PT_setoutputpath,
     RENDER_PT_setoutputpathfieldsoptions,
